@@ -7,9 +7,9 @@ Copyright (C) 2024 Sai Vignesh Golla
 License:    GNU Affero General Public License
             https://www.gnu.org/licenses/agpl-3.0.en.html
             
-GitHub:     https://github.com/GodsScion/Auto_job_applier_linkedIn
+GitHub:     https://github.com/Namanj413/Auto_job_applier_linkedIn
 
-Support me: https://github.com/sponsors/GodsScion
+Support me: https://github.com/sponsors/Namanj413
 
 version:    26.01.20.5.08
 '''
@@ -23,8 +23,30 @@ from selenium.webdriver.common.keys import Keys
 from selenium.webdriver.remote.webelement import WebElement
 from selenium.webdriver.remote.webdriver import WebDriver
 from selenium.webdriver.common.action_chains import ActionChains
+from selenium.common.exceptions import TimeoutException
 
 # Click Functions
+def _find_clickable_text_element(driver: WebDriver, text: str, time: float=5.0) -> WebElement | bool:
+    '''
+    Finds an element containing the given text using several common LinkedIn widget structures.
+    '''
+    if not text:
+        return False
+
+    escaped_text = str(text).replace("'", "\\'")
+    xpaths = [
+        f".//*[self::span or self::button or self::div or self::li or self::label][normalize-space(.)='{escaped_text}']",
+        f".//*[self::span or self::button or self::div or self::li or self::label][contains(normalize-space(.), '{escaped_text}')]"
+    ]
+
+    for xpath in xpaths:
+        try:
+            return WebDriverWait(driver, time).until(EC.element_to_be_clickable((By.XPATH, xpath)))
+        except (TimeoutException, Exception):
+            continue
+    return False
+
+
 def wait_span_click(driver: WebDriver, text: str, time: float=5.0, click: bool=True, scroll: bool=True, scrollTop: bool=False) -> WebElement | bool:
     '''
     Finds the span element with the given `text`.
@@ -36,10 +58,16 @@ def wait_span_click(driver: WebDriver, text: str, time: float=5.0, click: bool=T
     '''
     if text:
         try:
-            button = WebDriverWait(driver,time).until(EC.presence_of_element_located((By.XPATH, './/span[normalize-space(.)="'+text+'"]')))
-            if scroll:  scroll_to_view(driver, button, scrollTop)
+            button = _find_clickable_text_element(driver, text, time)
+            if not button:
+                raise Exception("Element not found")
+            if scroll:
+                scroll_to_view(driver, button, scrollTop)
             if click:
-                button.click()
+                try:
+                    button.click()
+                except Exception:
+                    driver.execute_script("arguments[0].click();", button)
                 buffer(click_gap)
             return button
         except Exception as e:
@@ -86,15 +114,36 @@ def boolean_button_click(driver: WebDriver, actions: ActionChains, text: str) ->
     '''
     Tries to click on the boolean button with the given `text` text.
     '''
-    try:
-        list_container = driver.find_element(By.XPATH, './/h3[normalize-space()="'+text+'"]/ancestor::fieldset')
-        button = list_container.find_element(By.XPATH, './/input[@role="switch"]')
-        scroll_to_view(driver, button)
-        actions.move_to_element(button).click().perform()
-        buffer(click_gap)
-    except Exception as e:
-        print_lg("Click Failed! Didn't find '"+text+"'")
-        # print_lg(e)
+    if not text:
+        return
+
+    escaped_text = str(text).replace("'", "\\'")
+    container_xpaths = [
+        f'.//h3[normalize-space(.)="{escaped_text}"]/ancestor::fieldset',
+        f'.//label[normalize-space(.)="{escaped_text}"]/ancestor::fieldset',
+        f'.//div[normalize-space(.)="{escaped_text}"]/ancestor::fieldset',
+        f'.//*[contains(normalize-space(.), "{escaped_text}")]/ancestor::fieldset'
+    ]
+
+    for container_xpath in container_xpaths:
+        try:
+            list_container = WebDriverWait(driver, 5).until(EC.presence_of_element_located((By.XPATH, container_xpath)))
+            for control_xpath in ['.//input[@role="switch"]', './/input[@type="checkbox"]', './/button', './/div[@role="switch"]']:
+                try:
+                    button = list_container.find_element(By.XPATH, control_xpath)
+                    scroll_to_view(driver, button)
+                    if actions:
+                        actions.move_to_element(button).click().perform()
+                    else:
+                        button.click()
+                    buffer(click_gap)
+                    return
+                except Exception:
+                    continue
+        except Exception:
+            continue
+
+    print_lg("Click Failed! Didn't find '"+text+"'")
 
 # Find functions
 def find_by_class(driver: WebDriver, class_name: str, time: float=5.0) -> WebElement | Exception:

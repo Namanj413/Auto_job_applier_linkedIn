@@ -7,9 +7,9 @@ Copyright (C) 2024 Sai Vignesh Golla
 License:    GNU Affero General Public License
             https://www.gnu.org/licenses/agpl-3.0.en.html
             
-GitHub:     https://github.com/GodsScion/Auto_job_applier_linkedIn
+GitHub:     https://github.com/Namanj413/Auto_job_applier_linkedIn
 
-Support me: https://github.com/sponsors/GodsScion
+Support me: https://github.com/sponsors/Namanj413
 
 version:    26.01.20.5.08
 '''
@@ -44,7 +44,7 @@ from config.settings import *
 from modules.open_chrome import *
 from modules.helpers import *
 from modules.clickers_and_finders import *
-from modules.validator import validate_config
+from modules.validator import validate_config, normalize_citizenship_answer
 
 if use_AI:
     from modules.ai.openaiConnections import ai_create_openai_client, ai_extract_skills, ai_answer_question, ai_close_openai_client
@@ -55,6 +55,55 @@ from typing import Literal
 
 
 pyautogui.FAILSAFE = False
+
+
+def safe_alert(text: str, title: str = "", button: str = "OK") -> None:
+    '''
+    Compatibility wrapper for pyautogui.alert across pymsgbox versions.
+    '''
+    try:
+        pyautogui.alert(text=text, title=title, button=button)
+    except TypeError:
+        pyautogui.alert(text, title)
+
+
+def safe_confirm(text: str, title: str = "", buttons: list[str] | None = None) -> str:
+    '''
+    Compatibility wrapper for pyautogui.confirm across pymsgbox versions.
+    '''
+    try:
+        if buttons:
+            return pyautogui.confirm(text=text, title=title, buttons=buttons)
+        return pyautogui.confirm(text=text, title=title)
+    except TypeError:
+        return pyautogui.confirm(text, title)
+
+
+def recover_browser_session() -> None:
+    '''
+    Recreate the browser session and log back in after a transient browser/session failure.
+    '''
+    global driver, actions, wait, options, linkedIn_tab, tabs_count, useNewResume
+
+    print_lg("Attempting to recover the browser session...")
+    try:
+        if driver is not None:
+            driver.quit()
+    except Exception as e:
+        print_lg("Failed to close the previous browser session cleanly.", e)
+
+    try:
+        options, driver, actions, wait = createChromeSession()
+    except Exception as e:
+        raise RuntimeError(f"Failed to recreate browser session: {e}") from e
+
+    tabs_count = len(driver.window_handles)
+    driver.get("https://www.linkedin.com/login")
+    if not is_logged_in_LN():
+        login_LN()
+    linkedIn_tab = driver.current_window_handle
+    useNewResume = True
+    print_lg("Browser session recovered successfully.")
 # if use_resume_generator:    from resume_generator import is_logged_in_GPT, login_GPT, open_resume_chat, create_custom_resume
 
 
@@ -126,7 +175,7 @@ def login_LN() -> None:
     # Find the username and password fields and fill them with user credentials
     driver.get("https://www.linkedin.com/login")
     if username == "username@example.com" and password == "example_password":
-        pyautogui.alert("User did not configure username and password in secrets.py, hence can't login automatically! Please login manually!", "Login Manually","Okay")
+        safe_alert("User did not configure username and password in secrets.py, hence can't login automatically! Please login manually!", "Login Manually","Okay")
         print_lg("User did not configure username and password in secrets.py, hence can't login automatically! Please login manually!")
         manual_login_retry(is_logged_in_LN, 2)
         return
@@ -252,12 +301,12 @@ def apply_filters() -> None:
         show_results_button.click()
 
         global pause_after_filters
-        if pause_after_filters and "Turn off Pause after search" == pyautogui.confirm("These are your configured search results and filter. It is safe to change them while this dialog is open, any changes later could result in errors and skipping this search run.", "Please check your results", ["Turn off Pause after search", "Look's good, Continue"]):
+        if pause_after_filters and "Turn off Pause after search" == safe_confirm("These are your configured search results and filter. It is safe to change them while this dialog is open, any changes later could result in errors and skipping this search run.", "Please check your results", ["Turn off Pause after search", "Look's good, Continue"]):
             pause_after_filters = False
 
     except Exception as e:
         print_lg("Setting the preferences failed!")
-        pyautogui.confirm(f"Faced error while applying filters. Please make sure correct filters are selected, click on show results and click on any button of this dialog, I know it sucks. Can't turn off Pause after search when error occurs! ERROR: {e}", ["Doesn't look good, but Continue XD", "Look's good, Continue"])
+        safe_confirm(f"Faced error while applying filters. Please make sure correct filters are selected, click on show results and click on any button of this dialog, I know it sucks. Can't turn off Pause after search when error occurs! ERROR: {e}", ["Doesn't look good, but Continue XD", "Look's good, Continue"])
         # print_lg(e)
 
 
@@ -548,7 +597,7 @@ def answer_questions(modal: WebElement, questions_list: set, work_location: str,
                 label_org += f' {options_labels[-1]},'
 
             if overwrite_previous_answers or prev_answer is None:
-                if 'citizenship' in label or 'employment eligibility' in label: answer = us_citizenship
+                if 'citizenship' in label or 'employment eligibility' in label: answer = normalize_citizenship_answer(us_citizenship)
                 elif 'veteran' in label or 'protected' in label: answer = veteran_status
                 elif 'disability' in label or 'handicapped' in label: 
                     answer = disability_status
@@ -634,7 +683,7 @@ def answer_questions(modal: WebElement, questions_list: set, work_location: str,
                 elif 'website' in label or 'blog' in label or 'portfolio' in label or 'link' in label: answer = website
                 elif 'scale of 1-10' in label: answer = confidence_level
                 elif 'headline' in label: answer = linkedin_headline
-                elif ('hear' in label or 'come across' in label) and 'this' in label and ('job' in label or 'position' in label): answer = "https://github.com/GodsScion/Auto_job_applier_linkedIn"
+                elif ('hear' in label or 'come across' in label) and 'this' in label and ('job' in label or 'position' in label): answer = "https://github.com/Namanj413/Auto_job_applier_linkedIn"
                 elif 'state' in label or 'province' in label: answer = state
                 elif 'zip' in label or 'postal' in label or 'code' in label: answer = zipcode
                 elif 'country' in label: answer = country
@@ -811,7 +860,7 @@ def failed_job(job_id: str, job_link: str, resume: str, date_listed, error: str,
             file.close()
     except Exception as e:
         print_lg("Failed to update failed jobs list!", e)
-        pyautogui.alert("Failed to update the excel of failed jobs!\nProbably because of 1 of the following reasons:\n1. The file is currently open or in use by another program\n2. Permission denied to write to the file\n3. Failed to find the file", "Failed Logging")
+        safe_alert("Failed to update the excel of failed jobs!\nProbably because of 1 of the following reasons:\n1. The file is currently open or in use by another program\n2. Permission denied to write to the file\n3. Failed to find the file", "Failed Logging")
 
 
 def screenshot(driver: WebDriver, job_id: str, failedAt: str) -> str:
@@ -849,7 +898,7 @@ def submitted_jobs(job_id: str, title: str, company: str, work_location: str, wo
         csv_file.close()
     except Exception as e:
         print_lg("Failed to update submitted jobs list!", e)
-        pyautogui.alert("Failed to update the excel of applied jobs!\nProbably because of 1 of the following reasons:\n1. The file is currently open or in use by another program\n2. Permission denied to write to the file\n3. Failed to find the file", "Failed Logging")
+        safe_alert("Failed to update the excel of applied jobs!\nProbably because of 1 of the following reasons:\n1. The file is currently open or in use by another program\n2. Permission denied to write to the file\n3. Failed to find the file", "Failed Logging")
 
 
 
@@ -1057,7 +1106,7 @@ def apply_to_jobs(search_terms: list[str]) -> None:
                                     if next_counter >= 15: 
                                         if pause_at_failed_question:
                                             screenshot(driver, job_id, "Needed manual intervention for failed question")
-                                            pyautogui.alert("Couldn't answer one or more questions.\nPlease click \"Continue\" once done.\nDO NOT CLICK Back, Next or Review button in LinkedIn.\n\n\n\n\nYou can turn off \"Pause at failed question\" setting in config.py", "Help Needed", "Continue")
+                                            safe_alert("Couldn't answer one or more questions.\nPlease click \"Continue\" once done.\nDO NOT CLICK Back, Next or Review button in LinkedIn.\n\n\n\n\nYou can turn off \"Pause at failed question\" setting in config.py", "Help Needed", "Continue")
                                             next_counter = 1
                                             continue
                                         if questions_list: print_lg("Stuck for one or some of the following questions...", questions_list)
@@ -1080,7 +1129,7 @@ def apply_to_jobs(search_terms: list[str]) -> None:
                                 wait_span_click(driver, "Review", 1, scrollTop=True)
                                 cur_pause_before_submit = pause_before_submit
                                 if errored != "stuck" and cur_pause_before_submit:
-                                    decision = pyautogui.confirm('1. Please verify your information.\n2. If you edited something, please return to this final screen.\n3. DO NOT CLICK "Submit Application".\n\n\n\n\nYou can turn off "Pause before submit" setting in config.py\nTo TEMPORARILY disable pausing, click "Disable Pause"', "Confirm your information",["Disable Pause", "Discard Application", "Submit Application"])
+                                    decision = safe_confirm('1. Please verify your information.\n2. If you edited something, please return to this final screen.\n3. DO NOT CLICK "Submit Application".\n\n\n\n\nYou can turn off "Pause before submit" setting in config.py\nTo TEMPORARILY disable pausing, click "Disable Pause"', "Confirm your information",["Disable Pause", "Discard Application", "Submit Application"])
                                     if decision == "Discard Application": raise Exception("Job application discarded by user!")
                                     pause_before_submit = False if "Disable Pause" == decision else True
                                     # try_xp(modal, ".//span[normalize-space(.)='Review']")
@@ -1088,7 +1137,7 @@ def apply_to_jobs(search_terms: list[str]) -> None:
                                 if wait_span_click(driver, "Submit application", 2, scrollTop=True): 
                                     date_applied = datetime.now()
                                     if not wait_span_click(driver, "Done", 2): actions.send_keys(Keys.ESCAPE).perform()
-                                elif errored != "stuck" and cur_pause_before_submit and "Yes" in pyautogui.confirm("You submitted the application, didn't you 😒?", "Failed to find Submit Application!", ["Yes", "No"]):
+                                elif errored != "stuck" and cur_pause_before_submit and "Yes" in safe_confirm("You submitted the application, didn't you 😒?", "Failed to find Submit Application!", ["Yes", "No"]):
                                     date_applied = datetime.now()
                                     wait_span_click(driver, "Done", 2)
                                 else:
@@ -1137,8 +1186,13 @@ def apply_to_jobs(search_terms: list[str]) -> None:
                     break
 
         except (NoSuchWindowException, WebDriverException) as e:
-            print_lg("Browser window closed or session is invalid. Ending application process.", e)
-            raise e # Re-raise to be caught by main
+            print_lg("Browser window closed or session is invalid. Attempting to recover and continue.", e)
+            try:
+                recover_browser_session()
+                continue
+            except Exception as recovery_error:
+                print_lg("Browser recovery failed. Ending application process.", recovery_error)
+                raise
         except Exception as e:
             print_lg("Failed to find Job listings!")
             critical_error_log("In Applier", e)
@@ -1158,11 +1212,13 @@ def run(total_runs: int) -> int:
     print_lg(f"Currently looking for jobs posted within '{date_posted}' and sorting them by '{sort_by}'")
     apply_to_jobs(search_terms)
     print_lg("########################################################################################################################\n")
-    if not dailyEasyApplyLimitReached:
-        print_lg("Sleeping for 10 min...")
+    if not dailyEasyApplyLimitReached and run_non_stop:
+        print_lg("Sleeping for 5 min before the next cycle...")
         sleep(300)
-        print_lg("Few more min... Gonna start with in next 5 min...")
+        print_lg("Few more min... Gonna start with the next cycle in a moment...")
         sleep(300)
+    else:
+        print_lg("Skipping cycle delay because continuous mode is disabled.")
     buffer(3)
     return total_runs + 1
 
@@ -1172,15 +1228,17 @@ chatGPT_tab = False
 linkedIn_tab = False
 
 def main() -> None:
-    pyautogui.alert("Please consider sponsoring this project at:\n\nhttps://github.com/sponsors/GodsScion\n\n", "Support the project", "Okay")
+    safe_alert("Please consider sponsoring this project at:\n\nhttps://github.com/sponsors/Namanj413\n\n", "Support the project", "Okay")
     total_runs = 1
+    should_close_browser = False
+    recovery_attempts = 0
     try:
         global linkedIn_tab, tabs_count, useNewResume, aiClient
         alert_title = "Error Occurred. Closing Browser!"
         validate_config()
         
         if not os.path.exists(default_resume_path):
-            pyautogui.alert(text='Your default resume "{}" is missing! Please update it\'s folder path "default_resume_path" in config.py\n\nOR\n\nAdd a resume with exact name and path (check for spelling mistakes including cases).\n\n\nFor now the bot will continue using your previous upload from LinkedIn!'.format(default_resume_path), title="Missing Resume", button="OK")
+            safe_alert(text='Your default resume "{}" is missing! Please update it\'s folder path "default_resume_path" in config.py\n\nOR\n\nAdd a resume with exact name and path (check for spelling mistakes including cases).\n\n\nFor now the bot will continue using your previous upload from LinkedIn!'.format(default_resume_path), title="Missing Resume", button="OK")
             useNewResume = False
         
         # Login to LinkedIn
@@ -1237,10 +1295,34 @@ def main() -> None:
         
 
     except (NoSuchWindowException, WebDriverException) as e:
-        print_lg("Browser window closed or session is invalid. Exiting.", e)
+        recovery_attempts += 1
+        print_lg(f"Browser window closed or session is invalid. Attempting recovery ({recovery_attempts}/3)...", e)
+        try:
+            recover_browser_session()
+            if recovery_attempts >= 3:
+                raise RuntimeError("Browser session could not be recovered after 3 attempts")
+            print_lg("Continuing after browser recovery.")
+            should_close_browser = False
+            total_runs = run(total_runs)
+            while(run_non_stop):
+                if cycle_date_posted:
+                    date_options = ["Any time", "Past month", "Past week", "Past 24 hours"]
+                    global date_posted
+                    date_posted = date_options[date_options.index(date_posted)+1 if date_options.index(date_posted)+1 > len(date_options) else -1] if stop_date_cycle_at_24hr else date_options[0 if date_options.index(date_posted)+1 >= len(date_options) else date_options.index(date_posted)+1]
+                if alternate_sortby:
+                    global sort_by
+                    sort_by = "Most recent" if sort_by == "Most relevant" else "Most relevant"
+                    total_runs = run(total_runs)
+                    sort_by = "Most recent" if sort_by == "Most relevant" else "Most relevant"
+                total_runs = run(total_runs)
+                if dailyEasyApplyLimitReached:
+                    break
+        except Exception as recovery_error:
+            print_lg("Browser recovery failed. Leaving the session open for manual recovery.", recovery_error)
+            critical_error_log("In Applier Main", recovery_error)
     except Exception as e:
         critical_error_log("In Applier Main", e)
-        pyautogui.alert(e,alert_title)
+        safe_alert(e,alert_title)
     finally:
         summary = "Total runs: {}\nJobs Easy Applied: {}\nExternal job links collected: {}\nTotal applied or collected: {}\nFailed jobs: {}\nIrrelevant jobs skipped: {}\n".format(total_runs,easy_applied_count,external_jobs_count,easy_applied_count + external_jobs_count,failed_count,skip_count)
         print_lg(summary)
@@ -1272,12 +1354,12 @@ def main() -> None:
         if timeSaved > 0:
             timeSaved += 60
             timeSavedMsg = f"In this run, you saved approx {round(timeSaved/60)} mins ({timeSaved} secs), please consider supporting the project."
-        msg = f"{quotes}\n\n\n{timeSavedMsg}\nYou can also get your quote and name shown here, or prioritize your bug reports by supporting the project at:\n\nhttps://github.com/sponsors/GodsScion\n\n\nSummary:\n{summary}\n\n\nBest regards,\nSai Vignesh Golla\nhttps://www.linkedin.com/in/saivigneshgolla/\n\nTop Sponsors:\n{sponsors}"
-        pyautogui.alert(msg, "Exiting..")
+        msg = f"{quotes}\n\n\n{timeSavedMsg}\nYou can also get your quote and name shown here, or prioritize your bug reports by supporting the project at:\n\nhttps://github.com/sponsors/Namanj413\n\n\nSummary:\n{summary}\n\n\nBest regards,\nSai Vignesh Golla\nhttps://www.linkedin.com/in/saivigneshgolla/\n\nTop Sponsors:\n{sponsors}"
+        safe_alert(msg, "Exiting..")
         print_lg(msg,"Closing the browser...")
         if tabs_count >= 10:
             msg = "NOTE: IF YOU HAVE MORE THAN 10 TABS OPENED, PLEASE CLOSE OR BOOKMARK THEM!\n\nOr it's highly likely that application will just open browser and not do anything next time!" 
-            pyautogui.alert(msg,"Info")
+            safe_alert(msg,"Info")
             print_lg("\n"+msg)
         ##> ------ Yang Li : MARKYangL - Feature ------
         if use_AI and aiClient:
@@ -1292,13 +1374,15 @@ def main() -> None:
             except Exception as e:
                 print_lg("Failed to close AI client:", e)
         ##<
-        try:
-            if driver:
+        if should_close_browser and driver:
+            try:
                 driver.quit()
-        except WebDriverException as e:
-            print_lg("Browser already closed.", e)
-        except Exception as e: 
-            critical_error_log("When quitting...", e)
+            except WebDriverException as e:
+                print_lg("Browser already closed.", e)
+            except Exception as e: 
+                critical_error_log("When quitting...", e)
+        elif driver:
+            print_lg("Leaving the browser session open after recovery so it can continue running.")
 
 
 if __name__ == "__main__":

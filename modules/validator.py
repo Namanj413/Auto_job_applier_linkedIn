@@ -1,15 +1,15 @@
 '''
-Author:     Sai Vignesh Golla
-LinkedIn:   https://www.linkedin.com/in/saivigneshgolla/
+Author:     Naman Jain
+LinkedIn:   https://www.linkedin.com/in/namanj413/
 
 Copyright (C) 2024 Sai Vignesh Golla
 
 License:    GNU Affero General Public License
             https://www.gnu.org/licenses/agpl-3.0.en.html
             
-GitHub:     https://github.com/GodsScion/Auto_job_applier_linkedIn
+GitHub:     https://github.com/Namanj413/Auto_job_applier_linkedIn
 
-Support me: https://github.com/sponsors/GodsScion
+Support me: https://github.com/sponsors/Namanj413
 
 version:    26.01.20.5.08
 '''
@@ -35,6 +35,33 @@ def check_string(var: str, var_name: str, options: list=[], min_length: int=0) -
     if min_length > 0 and len(var) < min_length: raise ValueError(f'Invalid input for {var_name}. Expecting a String of length at least {min_length}!')
     if len(options) > 0 and var not in options: raise ValueError(f'Invalid input for {var_name}. Expecting a value from {options}, not {var}!')
     return True
+
+
+def normalize_citizenship_answer(value: str) -> str:
+    if not isinstance(value, str):
+        return "Other"
+    normalized = value.strip().lower()
+    aliases = {
+        "u.s. citizen": "U.S. Citizen/Permanent Resident",
+        "u.s. citizen/permanent resident": "U.S. Citizen/Permanent Resident",
+        "us citizen": "U.S. Citizen/Permanent Resident",
+        "us citizen/permanent resident": "U.S. Citizen/Permanent Resident",
+        "non-citizen allowed to work for any employer": "Non-citizen allowed to work for any employer",
+        "non citizen allowed to work for any employer": "Non-citizen allowed to work for any employer",
+        "non-citizen allowed to work for current employer": "Non-citizen allowed to work for current employer",
+        "non citizen allowed to work for current employer": "Non-citizen allowed to work for current employer",
+        "non-citizen seeking work authorization": "Non-citizen seeking work authorization",
+        "non citizen seeking work authorization": "Non-citizen seeking work authorization",
+        "canadian citizen": "Canadian Citizen/Permanent Resident",
+        "canadian citizen/permanent resident": "Canadian Citizen/Permanent Resident",
+        "canadian": "Canadian Citizen/Permanent Resident",
+        "other": "Other",
+        "india": "Other",
+        "indian": "Other",
+        "indian citizen": "Other",
+        "citizen of india": "Other",
+    }
+    return aliases.get(normalized, value.strip() or "Other")
 
 def check_list(var: list, var_name: str, options: list=[], min_length: int=0) -> bool | TypeError | ValueError:
     if not isinstance(var, list): 
@@ -89,7 +116,8 @@ def validate_questions() -> None | ValueError | TypeError:
     check_string(website, "website")
     check_string(linkedIn, "linkedIn")
     check_int(desired_salary, "desired_salary")
-    check_string(us_citizenship, "us_citizenship", ["U.S. Citizen/Permanent Resident", "Non-citizen allowed to work for any employer", "Non-citizen allowed to work for current employer", "Non-citizen seeking work authorization", "Canadian Citizen/Permanent Resident", "Other"])
+    normalized_citizenship = normalize_citizenship_answer(us_citizenship)
+    check_string(normalized_citizenship, "us_citizenship", ["U.S. Citizen/Permanent Resident", "Non-citizen allowed to work for any employer", "Non-citizen allowed to work for current employer", "Non-citizen seeking work authorization", "Canadian Citizen/Permanent Resident", "Other"])
     check_string(linkedin_headline, "linkedin_headline")
     check_int(notice_period, "notice_period")
     check_int(current_ctc, "current_ctc")
