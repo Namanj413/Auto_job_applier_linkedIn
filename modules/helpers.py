@@ -1,8 +1,8 @@
 '''
-Author:     Sai Vignesh Golla
+Author:     Naman Jain
 LinkedIn:   https://www.linkedin.com/in/saivigneshgolla/
 
-Copyright (C) 2024 Sai Vignesh Golla
+Copyright (C) 2024 Naman Jain
 
 License:    GNU Affero General Public License
             https://www.gnu.org/licenses/agpl-3.0.en.html
@@ -62,10 +62,52 @@ def get_default_temp_profile() -> str:
     home = pathlib.Path.home()
     if sys.platform.startswith('win'):
         timestamp = datetime.now().strftime('%Y%m%d%H%M%S%f')
-        return f"--user-data-dir=C:\\temp\\auto-job-apply-profile-{timestamp}"
+        profile_path = f"C:\\temp\\auto-job-apply-profile-{timestamp}"
+        try:
+            os.makedirs(os.path.dirname(profile_path), exist_ok=True)
+        except Exception:
+            pass
+        return profile_path
     elif sys.platform.startswith('linux'):
-        return str(home / ".auto-job-apply-profile")
-    return str(home / "Library" / "Application Support" / "Google" / "Chrome" / "auto-job-apply-profile")
+        profile_path = str(home / ".auto-job-apply-profile")
+        try:
+            os.makedirs(profile_path, exist_ok=True)
+        except Exception:
+            pass
+        return profile_path
+    profile_path = str(home / "Library" / "Application Support" / "Google" / "Chrome" / "auto-job-apply-profile")
+    try:
+        os.makedirs(profile_path, exist_ok=True)
+    except Exception:
+        pass
+    return profile_path
+
+
+def get_default_resume_state_path() -> str:
+    return os.path.join(logs_folder_path, "automation_state.json").replace("//", "/")
+
+
+def save_resume_state(state: dict, state_path: str | None = None) -> None:
+    path = os.path.expanduser(state_path or get_default_resume_state_path())
+    directory = os.path.dirname(path)
+    if directory:
+        make_directories([directory])
+    with open(path, 'w', encoding='utf-8') as file:
+        json.dump(state, file, indent=2)
+
+
+def load_resume_state(state_path: str | None = None) -> dict | None:
+    path = os.path.expanduser(state_path or get_default_resume_state_path())
+    if not os.path.exists(path):
+        return None
+    with open(path, 'r', encoding='utf-8') as file:
+        return json.load(file)
+
+
+def clear_resume_state(state_path: str | None = None) -> None:
+    path = os.path.expanduser(state_path or get_default_resume_state_path())
+    if os.path.exists(path):
+        os.remove(path)
 
 
 def find_default_profile_directory() -> str | None:

@@ -36,7 +36,7 @@ follow_companies = False            # True or False, Note: True or False are cas
 # connect_request_message = ""       # Leave Empty to send connection request without personalized invitation (recommended to leave it empty, since you only get 10 per month without LinkedIn Premium*)
 
 # Do you want the program to run continuously until you stop it? (Beta)
-run_non_stop = False                # True or False, Note: True or False are case-sensitive
+run_non_stop = True                # True or False, Note: True or False are case-sensitive
 '''
 Note: Will be treated as False if `run_in_background = True`
 '''
@@ -73,8 +73,14 @@ run_in_background = False           # True or False, Note: True or False are cas
 # If you want to disable extensions then set disable_extensions as True (Better for performance)
 disable_extensions = False          # True or False, Note: True or False are case-sensitive
 
+# Reuse your existing Chrome profile instead of launching a fresh guest profile.
+use_existing_chrome_profile = True   # True or False, Note: True or False are case-sensitive
+
 # Run in safe mode. Set this true if chrome is taking too long to open or if you have multiple profiles in browser. This will open chrome in guest profile!
-safe_mode = True                    # True or False, Note: True or False are case-sensitive
+safe_mode = False                   # True or False, Note: True or False are case-sensitive
+
+# Persist the last LinkedIn page and search progress so the bot can resume after a restart.
+resume_state_file = "logs/automation_state.json"
 
 # Do you want scrolling to be smooth or instantaneous? (Can reduce performance if True)
 smooth_scroll = False               # True or False, Note: True or False are case-sensitive
@@ -114,6 +120,6 @@ As an independent developer, I pour my heart and soul into creating tools like t
 Your support, whether through donations big or small or simply spreading the word, means the world to me and helps keep this project alive and thriving.
 
 Gratefully yours 🙏🏻,
-Sai Vignesh Golla
+Naman Jain
 '''
 ############################################################################################################

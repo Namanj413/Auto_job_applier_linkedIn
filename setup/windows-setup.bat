@@ -1,7 +1,7 @@
-:: Author:     Sai Vignesh Golla
+:: Author:     Naman Jain
 :: LinkedIn:   https://www.linkedin.com/in/saivigneshgolla/
 
-:: Copyright (C) 2024 Sai Vignesh Golla
+:: Copyright (C) 2024 Naman Jain
 
 :: License:    GNU Affero General Public License
 ::             https://www.gnu.org/licenses/agpl-3.0.en.html

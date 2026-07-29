@@ -1,8 +1,8 @@
 '''
-Author:     Sai Vignesh Golla
+Author:     Naman Jain
 LinkedIn:   https://www.linkedin.com/in/saivigneshgolla/
 
-Copyright (C) 2024 Sai Vignesh Golla
+Copyright (C) 2024 Naman Jain
 
 License:    GNU Affero General Public License
             https://www.gnu.org/licenses/agpl-3.0.en.html
@@ -15,7 +15,7 @@ version:    26.01.20.5.08
 '''
 
 from modules.helpers import get_default_temp_profile, make_directories
-from config.settings import run_in_background, stealth_mode, disable_extensions, safe_mode, file_name, failed_file_name, logs_folder_path, generated_resume_path
+from config.settings import run_in_background, stealth_mode, disable_extensions, safe_mode, use_existing_chrome_profile, file_name, failed_file_name, logs_folder_path, generated_resume_path
 from config.questions import default_resume_path
 from selenium import webdriver
 from selenium.webdriver.chrome.options import Options
@@ -38,8 +38,10 @@ def createChromeSession(isRetry: bool = False):
     profile_dir = find_default_profile_directory()
     if isRetry:
         print_lg("Will login with a guest profile, browsing history will not be saved in the browser!")
-    elif profile_dir and not safe_mode:
+    elif use_existing_chrome_profile and profile_dir and not safe_mode:
         options.add_argument(f"--user-data-dir={profile_dir}")
+        options.add_argument("--profile-directory=Default")
+        print_lg("Using your existing Chrome profile so LinkedIn stays signed in and the bot can resume.")
     else:
         print_lg("Logging in with a guest profile, Web history will not be saved!")
         options.add_argument(f"--user-data-dir={get_default_temp_profile()}")
